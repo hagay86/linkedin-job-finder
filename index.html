@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CVBoost — AI CV Redesign & LinkedIn Job Tracker</title>
+<style>
+/* ============ RESET & BASE ============ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#242835;--surface3:#2e3344;
+  --border:#363b4e;--text:#e4e6ed;--text2:#9ca0b0;--text3:#6b7084;
+  --accent:#6c5ce7;--accent2:#a29bfe;--accent-glow:rgba(108,92,231,.15);
+  --green:#00b894;--red:#e17055;--yellow:#fdcb6e;--blue:#74b9ff;
+  --radius:12px;--radius-sm:8px;
+}
+html{font-size:15px}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+a{color:var(--accent2);text-decoration:none}
+button{cursor:pointer;font-family:inherit;border:none;outline:none}
+input,textarea,select{font-family:inherit;outline:none}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
+
+/* ============ LAYOUT ============ */
+.app{display:flex;height:100vh}
+.sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:transform .3s}
+.sidebar-header{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.sidebar-header h1{font-size:1.4rem;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sidebar-header p{font-size:.75rem;color:var(--text3);margin-top:4px}
+.nav{flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:4px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius-sm);color:var(--text2);font-size:.9rem;font-weight:500;transition:all .2s}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-glow);color:var(--accent2);font-weight:600}
+.nav-item svg{width:20px;height:20px;flex-shrink:0}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border);font-size:.7rem;color:var(--text3);text-align:center}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:none;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);align-items:center;gap:12px}
+.topbar .hamburger{background:none;color:var(--text);font-size:1.4rem}
+.topbar h2{font-size:1rem;font-weight:600}
+.content{flex:1;overflow-y:auto;padding:32px}
+.page{display:none}
+.page.active{display:block}
+
+/* ============ CV CHAT PAGE ============ */
+.chat-container{max-width:800px;margin:0 auto;height:calc(100vh - 96px);display:flex;flex-direction:column}
+.chat-header{text-align:center;padding-bottom:24px}
+.chat-header h2{font-size:1.6rem;font-weight:700;margin-bottom:6px}
+.chat-header p{color:var(--text2);font-size:.9rem}
+.chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding:16px 0}
+.chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;color:var(--text3)}
+.chat-empty svg{width:64px;height:64px;opacity:.3}
+.chat-empty p{font-size:.95rem}
+.chat-empty .quick-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:500px}
+.quick-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:8px 16px;border-radius:20px;font-size:.82rem;transition:all .2s}
+.quick-btn:hover{background:var(--surface3);color:var(--text);border-color:var(--accent)}
+.msg{display:flex;gap:12px;max-width:100%}
+.msg.user{flex-direction:row-reverse}
+.msg-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700}
+.msg.user .msg-avatar{background:var(--accent);color:#fff}
+.msg.assistant .msg-avatar{background:var(--green);color:#fff}
+.msg-bubble{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;font-size:.9rem;line-height:1.6;max-width:85%;white-space:pre-wrap;word-wrap:break-word}
+.msg.user .msg-bubble{background:var(--accent);border-color:var(--accent);color:#fff}
+.msg-bubble code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;font-size:.82rem}
+.msg-bubble strong{font-weight:600}
+.chat-input-area{padding:16px 0 8px;border-top:1px solid var(--border)}
+.cv-upload-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.cv-upload-bar label,.cv-paste-btn{background:var(--surface2);border:1px dashed var(--border);color:var(--text2);padding:8px 14px;border-radius:var(--radius-sm);font-size:.8rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+.cv-upload-bar label:hover,.cv-paste-btn:hover{border-color:var(--accent);color:var(--accent2)}
+.cv-upload-bar input[type=file]{display:none}
+.cv-status{font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:6px}
+.chat-input-row{display:flex;gap:10px;align-items:flex-end}
+.chat-input-row textarea{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;color:var(--text);font-size:.9rem;resize:none;min-height:48px;max-height:160px;transition:border-color .2s}
+.chat-input-row textarea:focus{border-color:var(--accent)}
+.chat-input-row textarea::placeholder{color:var(--text3)}
+.send-btn{background:var(--accent);color:#fff;width:48px;height:48px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;transition:background .2s;flex-shrink:0}
+.send-btn:hover{background:var(--accent2)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed}
+.send-btn svg{width:20px;height:20px}
+
+/* ============ LINKEDIN TRACKER ============ */
+.tracker-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:24px}
+.tracker-header h2{font-size:1.5rem;font-weight:700}
+.stats-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;flex:1;min-width:140px}
+.stat-card .number{font-size:1.8rem;font-weight:700}
+.stat-card .label{font-size:.78rem;color:var(--text2);margin-top:4px}
+.stat-card.applied .number{color:var(--blue)}
+.stat-card.interview .number{color:var(--yellow)}
+.stat-card.offer .number{color:var(--green)}
+.stat-card.rejected .number{color:var(--red)}
+.btn{padding:10px 20px;border-radius:var(--radius-sm);font-size:.85rem;font-weight:600;transition:all .2s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--text2)}
+.btn-secondary:hover{background:var(--surface3);color:var(--text)}
+.btn-danger{background:transparent;border:1px solid var(--red);color:var(--red)}
+.btn-danger:hover{background:var(--red);color:#fff}
+.btn-sm{padding:6px 12px;font-size:.78rem}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.table-wrap table{width:100%;border-collapse:collapse}
+.table-wrap th{background:var(--surface2);text-align:left;padding:14px 16px;font-size:.78rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.table-wrap td{padding:14px 16px;border-top:1px solid var(--border);font-size:.88rem}
+.table-wrap tr:hover td{background:var(--surface2)}
+.status-badge{padding:4px 10px;border-radius:12px;font-size:.72rem;font-weight:600;text-transform:uppercase}
+.status-badge.applied{background:rgba(116,185,255,.15);color:var(--blue)}
+.status-badge.interview{background:rgba(253,203,110,.15);color:var(--yellow)}
+.status-badge.offer{background:rgba(0,184,148,.15);color:var(--green)}
+.status-badge.rejected{background:rgba(225,112,85,.15);color:var(--red)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-state svg{width:48px;height:48px;margin-bottom:16px;opacity:.3}
+.empty-state p{margin-bottom:20px}
+.actions-cell{display:flex;gap:6px}
+
+/* ============ MODAL ============ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:90%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:1.15rem;font-weight:700;margin-bottom:20px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:.82rem;font-weight:600;color:var(--text2);margin-bottom:6px}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text);font-size:.88rem}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group textarea{min-height:80px;resize:vertical}
+.form-group select{-webkit-appearance:none;appearance:none}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+
+/* ============ AUTO APPLY ============ */
+.auto-apply-container{max-width:800px;margin:0 auto}
+.auto-apply-container h2{font-size:1.5rem;font-weight:700;margin-bottom:8px}
+.auto-apply-container>p{color:var(--text2);margin-bottom:28px;font-size:.9rem}
+.tool-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:16px}
+.tool-card h3{font-size:1.05rem;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.tool-card>p{color:var(--text2);font-size:.85rem;margin-bottom:16px}
+.tool-card textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;color:var(--text);font-size:.88rem;min-height:100px;resize:vertical;margin-bottom:12px}
+.tool-card textarea:focus{border-color:var(--accent)}
+.tool-output{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;margin-top:12px;font-size:.88rem;line-height:1.6;white-space:pre-wrap;display:none;max-height:400px;overflow-y:auto}
+.tool-output.visible{display:block}
+.connector-section{margin-top:40px}
+.connector-section h3{font-size:1.15rem;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.connector-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.connector-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;position:relative;opacity:.6}
+.connector-card .badge{position:absolute;top:10px;right:10px;background:var(--surface3);color:var(--text3);font-size:.65rem;padding:3px 8px;border-radius:8px;text-transform:uppercase;font-weight:600}
+.connector-card svg{width:36px;height:36px;margin-bottom:10px;color:var(--text3)}
+.connector-card h4{font-size:.9rem;margin-bottom:4px}
+.connector-card p{font-size:.72rem;color:var(--text3)}
+
+/* ============ SETTINGS ============ */
+.settings-container{max-width:600px;margin:0 auto}
+.settings-container h2{font-size:1.5rem;font-weight:700;margin-bottom:24px}
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:16px}
+.settings-card h3{font-size:1rem;font-weight:600;margin-bottom:16px}
+.api-input-row{display:flex;gap:10px}
+.api-input-row input{flex:1}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+.toggle-row span{font-size:.88rem}
+.toggle{width:44px;height:24px;background:var(--surface3);border-radius:12px;position:relative;cursor:pointer;transition:background .2s}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s}
+.toggle.on::after{transform:translateX(20px)}
+.danger-zone{border-color:var(--red)}
+.danger-zone h3{color:var(--red)}
+
+/* ============ RESPONSIVE ============ */
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:100;transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .topbar{display:flex}
+  .content{padding:20px 16px}
+  .stats-row{flex-direction:column}
+  .chat-container{height:calc(100vh - 140px)}
+  .table-wrap{overflow-x:auto}
+}
+/* ============ LOADING DOTS ============ */
+.loading-dots{display:flex;gap:4px;padding:8px 0}
+.loading-dots span{width:8px;height:8px;background:var(--text3);border-radius:50%;animation:bounce .6s infinite alternate}
+.loading-dots span:nth-child(2){animation-delay:.2s}
+.loading-dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{to{opacity:.3;transform:translateY(-4px)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1>CVBoost</h1>
+      <p>AI-Powered Job Search</p>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-page="chat" onclick="switchPage('chat')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        AI CV Chat
+      </button>
+      <button class="nav-item" data-page="tracker" onclick="switchPage('tracker')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        LinkedIn Tracker
+      </button>
+      <button class="nav-item" data-page="autoapply" onclick="switchPage('autoapply')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Auto-Apply Tools
+      </button>
+      <button class="nav-item" data-page="settings" onclick="switchPage('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Settings
+      </button>
+    </nav>
+    <div class="sidebar-footer">CVBoost v1.0 — Built for Job Seekers</div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h2 id="topbar-title">AI CV Chat</h2>
+    </div>
+
+    <!-- ===== PAGE: CHAT ===== -->
+    <div class="content">
+      <div class="page active" id="page-chat">
+        <div class="chat-container">
+          <div class="chat-header">
+            <h2>AI CV Redesign</h2>
+            <p>Upload your CV and chat with AI to improve it for specific roles</p>
+          </div>
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-empty" id="chatEmpty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              <p>Upload your CV and start chatting to improve it</p>
+              <div class="quick-actions">
+                <button class="quick-btn" onclick="sendQuick('Review my CV and suggest improvements')">Review my CV</button>
+                <button class="quick-btn" onclick="sendQuick('Rewrite my CV for a Product Manager role')">Tailor for PM role</button>
+                <button class="quick-btn" onclick="sendQuick('Make my CV more ATS-friendly')">Make ATS-friendly</button>
+                <button class="quick-btn" onclick="sendQuick('Improve the summary section of my CV')">Improve summary</button>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <div class="cv-upload-bar">
+              <label><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> Upload CV <input type="file" id="cvFile" accept=".txt,.pdf,.doc,.docx" onchange="handleCVUpload(event)"></label>
+              <button class="cv-paste-btn" onclick="togglePasteCV()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Paste CV Text</button>
+              <span class="cv-status" id="cvStatus" style="display:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> <span id="cvStatusText"></span></span>
+            </div>
+            <div id="pasteArea" style="display:none;margin-bottom:12px">
+              <textarea id="cvPasteInput" placeholder="Paste your CV text here..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;color:var(--text);font-size:.85rem;min-height:120px;resize:vertical"></textarea>
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn btn-primary btn-sm" onclick="savePastedCV()">Save CV</button>
+                <button class="btn btn-secondary btn-sm" onclick="togglePasteCV()">Cancel</button>
+              </div>
+            </div>
+            <div class="chat-input-row">
+              <textarea id="chatInput" placeholder="Ask AI to improve your CV..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}" oninput="autoResize(this)"></textarea>
+              <button class="send-btn" id="sendBtn" onclick="sendChat()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PAGE: TRACKER ===== -->
+      <div class="page" id="page-tracker">
+        <div class="tracker-header">
+          <h2>LinkedIn Application Tracker</h2>
+          <button class="btn btn-primary" onclick="openAddJob()">+ Add Application</button>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card applied"><div class="number" id="statTotal">0</div><div class="label">Total Applied</div></div>
+          <div class="stat-card interview"><div class="number" id="statInterview">0</div><div class="label">Interviews</div></div>
+          <div class="stat-card offer"><div class="number" id="statOffer">0</div><div class="label">Offers</div></div>
+          <div class="stat-card rejected"><div class="number" id="statRejected">0</div><div class="label">Rejected</div></div>
+        </div>
+        <div id="trackerContent"></div>
+      </div>
+
+      <!-- ===== PAGE: AUTO APPLY ===== -->
+      <div class="page" id="page-autoapply">
+        <div class="auto-apply-container">
+          <h2>Auto-Apply Tools</h2>
+          <p>Generate tailored cover letters and LinkedIn messages from any job description.</p>
+
+          <div class="tool-card">
+            <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Cover Letter Generator</h3>
+            <p>Paste a job description and get a tailored cover letter based on your CV.</p>
+            <textarea id="coverLetterJD" placeholder="Paste the job description here..."></textarea>
+            <button class="btn btn-primary" onclick="generateCoverLetter()">Generate Cover Letter</button>
+            <div class="tool-output" id="coverLetterOutput"></div>
+          </div>
+
+          <div class="tool-card">
+            <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> LinkedIn Message Generator</h3>
+            <p>Create a professional outreach message for recruiters or hiring managers.</p>
+            <textarea id="linkedinMsgJD" placeholder="Paste the job description or role details..."></textarea>
+            <div class="form-group" style="margin-top:8px">
+              <input type="text" id="recruiterName" placeholder="Recruiter/Hiring Manager name (optional)">
+            </div>
+            <button class="btn btn-primary" onclick="generateLinkedInMsg()">Generate Message</button>
+            <div class="tool-output" id="linkedinMsgOutput"></div>
+          </div>
+
+          <!-- FUTURE CONNECTORS -->
+          <div class="connector-section">
+            <h3><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Future Connectors</h3>
+            <div class="connector-grid">
+              <div class="connector-card">
+                <div class="badge">Coming Soon</div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+                <h4>LinkedIn Auto-Apply</h4>
+                <p>One-click apply to jobs</p>
+              </div>
+              <div class="connector-card">
+                <div class="badge">Coming Soon</div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <h4>Indeed Connector</h4>
+                <p>Sync Indeed applications</p>
+              </div>
+              <div class="connector-card">
+                <div class="badge">Coming Soon</div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                <h4>Glassdoor Connector</h4>
+                <p>Import salary & reviews</p>
+              </div>
+              <div class="connector-card">
+                <div class="badge">Coming Soon</div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <h4>Email Follow-Up</h4>
+                <p>Auto follow-up sequences</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PAGE: SETTINGS ===== -->
+      <div class="page" id="page-settings">
+        <div class="settings-container">
+          <h2>Settings</h2>
+
+          <div class="settings-card">
+            <h3>AI Provider</h3>
+            <div class="form-group">
+              <label>Provider</label>
+              <select id="aiProvider" onchange="updateProviderGuide();saveSettings()">
+                <option value="demo">Demo Mode (Free, no API key needed)</option>
+                <option value="openai">OpenAI (GPT-4)</option>
+                <option value="anthropic">Anthropic (Claude)</option>
+              </select>
+            </div>
+
+            <!-- GET API KEY GUIDE -->
+            <div id="apiGuide" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <span style="font-size:.85rem;font-weight:600;color:var(--accent2)" id="guideTitle">Get your API key in 3 steps:</span>
+                <a id="guideLink" href="" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none">Get API Key</a>
+              </div>
+              <div id="guideSteps" style="font-size:.8rem;color:var(--text2);line-height:1.7"></div>
+              <div style="margin-top:10px;padding:10px;background:rgba(0,184,148,.08);border-radius:var(--radius-sm);font-size:.78rem;color:var(--green)">
+                Both providers offer free trial credits for new accounts — no payment needed to start.
+              </div>
+            </div>
+
+            <div class="form-group" id="apiKeyGroup">
+              <label>API Key</label>
+              <div class="api-input-row">
+                <input type="password" id="apiKey" placeholder="Paste your API key here...">
+                <button class="btn btn-secondary btn-sm" onclick="toggleKeyVisibility()">Show</button>
+                <button class="btn btn-primary btn-sm" onclick="saveSettings();testAPIKey()">Save & Test</button>
+              </div>
+              <div id="apiTestResult" style="font-size:.78rem;margin-top:8px;display:none"></div>
+              <p style="font-size:.75rem;color:var(--text3);margin-top:8px">Your API key is stored locally in your browser. It never leaves your device except to call the AI provider.</p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <h3>Preferences</h3>
+            <div class="toggle-row">
+              <span>Dark Mode</span>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <span>Save chat history</span>
+              <div class="toggle on" id="toggleHistory" onclick="this.classList.toggle('on');saveSettings()"></div>
+            </div>
+          </div>
+
+          <div class="settings-card danger-zone">
+            <h3>Danger Zone</h3>
+            <p style="font-size:.85rem;color:var(--text2);margin-bottom:16px">These actions cannot be undone.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-danger btn-sm" onclick="if(confirm('Clear all chat messages?')){localStorage.removeItem('cvboost_chat');chatHistory=[];renderChat()}">Clear Chat History</button>
+              <button class="btn btn-danger btn-sm" onclick="if(confirm('Delete all tracked applications?')){localStorage.removeItem('cvboost_jobs');jobs=[];renderTracker()}">Clear Applications</button>
+              <button class="btn btn-danger btn-sm" onclick="if(confirm('Delete ALL data including API key and CV?')){localStorage.clear();location.reload()}">Reset Everything</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JOB MODAL -->
+<div class="modal-overlay" id="jobModal">
+  <div class="modal">
+    <h3 id="jobModalTitle">Add Application</h3>
+    <div class="form-group"><label>Company</label><input type="text" id="jobCompany" placeholder="e.g. Google"></div>
+    <div class="form-group"><label>Position</label><input type="text" id="jobPosition" placeholder="e.g. Product Manager"></div>
+    <div class="form-group"><label>Status</label>
+      <select id="jobStatus">
+        <option value="applied">Applied</option>
+        <option value="interview">Interview</option>
+        <option value="offer">Offer</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Date Applied</label><input type="date" id="jobDate"></div>
+    <div class="form-group"><label>LinkedIn URL</label><input type="text" id="jobUrl" placeholder="https://linkedin.com/jobs/..."></div>
+    <div class="form-group"><label>Notes</label><textarea id="jobNotes" placeholder="Any notes..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="jobModalSave" onclick="saveJob()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ STATE ============
+let cvText = localStorage.getItem('cvboost_cv') || '';
+let chatHistory = JSON.parse(localStorage.getItem('cvboost_chat') || '[]');
+let jobs = JSON.parse(localStorage.getItem('cvboost_jobs') || '[]');
+let editingJobId = null;
+let isStreaming = false;
+
+// ============ INIT ============
+(function init() {
+  loadSettings();
+  renderChat();
+  renderTracker();
+  if (cvText) {
+    document.getElementById('cvStatus').style.display = 'flex';
+    document.getElementById('cvStatusText').textContent = 'CV loaded (' + cvText.length + ' chars)';
+  }
+  document.getElementById('jobDate').value = new Date().toISOString().split('T')[0];
+})();
+
+// ============ NAVIGATION ============
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector('[data-page="' + page + '"]').classList.add('active');
+  const titles = { chat: 'AI CV Chat', tracker: 'LinkedIn Tracker', autoapply: 'Auto-Apply Tools', settings: 'Settings' };
+  document.getElementById('topbar-title').textContent = titles[page];
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+// ============ CV HANDLING ============
+function handleCVUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    cvText = ev.target.result;
+    localStorage.setItem('cvboost_cv', cvText);
+    document.getElementById('cvStatus').style.display = 'flex';
+    document.getElementById('cvStatusText').textContent = file.name + ' loaded';
+  };
+  reader.readAsText(file);
+}
+
+function togglePasteCV() {
+  const area = document.getElementById('pasteArea');
+  area.style.display = area.style.display === 'none' ? 'block' : 'none';
+}
+
+function savePastedCV() {
+  const text = document.getElementById('cvPasteInput').value.trim();
+  if (!text) return;
+  cvText = text;
+  localStorage.setItem('cvboost_cv', cvText);
+  document.getElementById('cvStatus').style.display = 'flex';
+  document.getElementById('cvStatusText').textContent = 'CV pasted (' + text.length + ' chars)';
+  document.getElementById('pasteArea').style.display = 'none';
+}
+
+// ============ CHAT ============
+function renderChat() {
+  const container = document.getElementById('chatMessages');
+  const empty = document.getElementById('chatEmpty');
+  if (chatHistory.length === 0) {
+    empty.style.display = 'flex';
+    container.querySelectorAll('.msg').forEach(m => m.remove());
+    return;
+  }
+  empty.style.display = 'none';
+  const msgs = container.querySelectorAll('.msg');
+  msgs.forEach(m => m.remove());
+  chatHistory.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'msg ' + m.role;
+    div.innerHTML = `<div class="msg-avatar">${m.role === 'user' ? 'U' : 'AI'}</div><div class="msg-bubble">${escapeHtml(m.content)}</div>`;
+    container.appendChild(div);
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.*?)`/g, '<code>$1</code>');
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+function sendQuick(text) {
+  document.getElementById('chatInput').value = text;
+  sendChat();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || isStreaming) return;
+
+  const settings = getSettings();
+  if (settings.provider !== 'demo' && !settings.apiKey) {
+    alert('Please set your API key in Settings first, or switch to Demo Mode.');
+    switchPage('settings');
+    return;
+  }
+
+  // Add user message
+  chatHistory.push({ role: 'user', content: text });
+  input.value = '';
+  input.style.height = 'auto';
+  renderChat();
+
+  // Show loading
+  isStreaming = true;
+  document.getElementById('sendBtn').disabled = true;
+  const container = document.getElementById('chatMessages');
+  const loadDiv = document.createElement('div');
+  loadDiv.className = 'msg assistant';
+  loadDiv.innerHTML = '<div class="msg-avatar">AI</div><div class="msg-bubble"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
+  container.appendChild(loadDiv);
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    const reply = await callAI(text, settings);
+    chatHistory.push({ role: 'assistant', content: reply });
+    localStorage.setItem('cvboost_chat', JSON.stringify(chatHistory));
+  } catch (err) {
+    chatHistory.push({ role: 'assistant', content: 'Error: ' + err.message + '\n\nPlease check your API key in Settings.' });
+  }
+
+  isStreaming = false;
+  document.getElementById('sendBtn').disabled = false;
+  renderChat();
+}
+
+async function callAI(userMsg, settings) {
+  if (settings.provider === 'demo') return getDemoResponse(userMsg);
+
+  const systemPrompt = `You are CVBoost, an expert CV/resume consultant and career coach. Help users improve their CVs to be more effective, ATS-friendly, and tailored for specific roles. Be specific and actionable in your advice. Format improvements clearly.${cvText ? '\n\nThe user\'s current CV:\n' + cvText : '\n\nThe user has not uploaded their CV yet. Ask them to upload or paste it.'}`;
+
+  const messages = chatHistory.slice(-10).map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content
+  }));
+
+  if (settings.provider === 'anthropic') {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: messages
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'API error ' + resp.status);
+    }
+    const data = await resp.json();
+    return data.content[0].text;
+  } else {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + settings.apiKey
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'system', content: systemPrompt }, ...messages],
+        max_tokens: 2048
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'API error ' + resp.status);
+    }
+    const data = await resp.json();
+    return data.choices[0].message.content;
+  }
+}
+
+// ============ TRACKER ============
+function renderTracker() {
+  const stats = { total: jobs.length, interview: 0, offer: 0, rejected: 0 };
+  jobs.forEach(j => { if (stats[j.status] !== undefined) stats[j.status]++; });
+  document.getElementById('statTotal').textContent = stats.total;
+  document.getElementById('statInterview').textContent = stats.interview;
+  document.getElementById('statOffer').textContent = stats.offer;
+  document.getElementById('statRejected').textContent = stats.rejected;
+
+  const container = document.getElementById('trackerContent');
+  if (jobs.length === 0) {
+    container.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><p>No applications tracked yet. Start adding your job applications!</p></div>';
+    return;
+  }
+
+  const sorted = [...jobs].sort((a, b) => new Date(b.date) - new Date(a.date));
+  let html = '<div class="table-wrap"><table><thead><tr><th>Company</th><th>Position</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+  sorted.forEach(j => {
+    html += `<tr>
+      <td><strong>${esc(j.company)}</strong>${j.url ? ' <a href="'+esc(j.url)+'" target="_blank" style="font-size:.75rem">↗</a>' : ''}</td>
+      <td>${esc(j.position)}</td>
+      <td><span class="status-badge ${j.status}">${j.status}</span></td>
+      <td style="font-size:.82rem;color:var(--text2)">${j.date}</td>
+      <td><div class="actions-cell">
+        <button class="btn btn-secondary btn-sm" onclick="editJob('${j.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteJob('${j.id}')">✕</button>
+      </div></td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function openAddJob() {
+  editingJobId = null;
+  document.getElementById('jobModalTitle').textContent = 'Add Application';
+  document.getElementById('jobCompany').value = '';
+  document.getElementById('jobPosition').value = '';
+  document.getElementById('jobStatus').value = 'applied';
+  document.getElementById('jobDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('jobUrl').value = '';
+  document.getElementById('jobNotes').value = '';
+  document.getElementById('jobModal').classList.add('show');
+}
+
+function editJob(id) {
+  const job = jobs.find(j => j.id === id);
+  if (!job) return;
+  editingJobId = id;
+  document.getElementById('jobModalTitle').textContent = 'Edit Application';
+  document.getElementById('jobCompany').value = job.company;
+  document.getElementById('jobPosition').value = job.position;
+  document.getElementById('jobStatus').value = job.status;
+  document.getElementById('jobDate').value = job.date;
+  document.getElementById('jobUrl').value = job.url || '';
+  document.getElementById('jobNotes').value = job.notes || '';
+  document.getElementById('jobModal').classList.add('show');
+}
+
+function saveJob() {
+  const company = document.getElementById('jobCompany').value.trim();
+  const position = document.getElementById('jobPosition').value.trim();
+  if (!company || !position) { alert('Company and Position are required.'); return; }
+
+  const jobData = {
+    id: editingJobId || Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    company,
+    position,
+    status: document.getElementById('jobStatus').value,
+    date: document.getElementById('jobDate').value,
+    url: document.getElementById('jobUrl').value.trim(),
+    notes: document.getElementById('jobNotes').value.trim()
+  };
+
+  if (editingJobId) {
+    const idx = jobs.findIndex(j => j.id === editingJobId);
+    if (idx !== -1) jobs[idx] = jobData;
+  } else {
+    jobs.push(jobData);
+  }
+
+  localStorage.setItem('cvboost_jobs', JSON.stringify(jobs));
+  renderTracker();
+  closeModal();
+}
+
+function deleteJob(id) {
+  if (!confirm('Delete this application?')) return;
+  jobs = jobs.filter(j => j.id !== id);
+  localStorage.setItem('cvboost_jobs', JSON.stringify(jobs));
+  renderTracker();
+}
+
+function closeModal() {
+  document.getElementById('jobModal').classList.remove('show');
+}
+
+// Close modal on overlay click
+document.getElementById('jobModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ============ AUTO APPLY ============
+async function generateCoverLetter() {
+  const jd = document.getElementById('coverLetterJD').value.trim();
+  if (!jd) { alert('Please paste a job description.'); return; }
+  const settings = getSettings();
+  if (settings.provider !== 'demo' && !settings.apiKey) { alert('Set your API key in Settings first, or switch to Demo Mode.'); switchPage('settings'); return; }
+
+  const output = document.getElementById('coverLetterOutput');
+  output.classList.add('visible');
+  output.textContent = 'Generating...';
+
+  try {
+    const prompt = `Based on this CV:\n\n${cvText}\n\nWrite a professional, tailored cover letter for this job:\n\n${jd}\n\nMake it concise (under 300 words), personalized, and highlight relevant experience. Do not use generic filler.`;
+    const reply = await callAISimple(prompt, settings);
+    output.textContent = reply;
+  } catch (err) {
+    output.textContent = 'Error: ' + err.message;
+  }
+}
+
+async function generateLinkedInMsg() {
+  const jd = document.getElementById('linkedinMsgJD').value.trim();
+  if (!jd) { alert('Please paste job details.'); return; }
+  const settings = getSettings();
+  if (settings.provider !== 'demo' && !settings.apiKey) { alert('Set your API key in Settings first, or switch to Demo Mode.'); switchPage('settings'); return; }
+
+  const name = document.getElementById('recruiterName').value.trim();
+  const output = document.getElementById('linkedinMsgOutput');
+  output.classList.add('visible');
+  output.textContent = 'Generating...';
+
+  try {
+    const prompt = `Write a short, professional LinkedIn outreach message (under 150 words) for this role:\n\n${jd}\n\n${name ? 'Address it to: ' + name : 'Do not use a specific name.'}\n${cvText ? 'My background: ' + cvText.slice(0, 500) : ''}\n\nBe genuine, not salesy. Show specific interest in the role.`;
+    const reply = await callAISimple(prompt, settings);
+    output.textContent = reply;
+  } catch (err) {
+    output.textContent = 'Error: ' + err.message;
+  }
+}
+
+async function callAISimple(prompt, settings) {
+  if (settings.provider === 'demo') {
+    if (prompt.includes('cover letter')) return getDemoCoverLetter(prompt);
+    const nameMatch = prompt.match(/Address it to:\s*(.+)/);
+    return getDemoLinkedInMsg(prompt, nameMatch ? nameMatch[1].trim() : '');
+  }
+  if (settings.provider === 'anthropic') {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    if (!resp.ok) throw new Error('API error ' + resp.status);
+    const data = await resp.json();
+    return data.content[0].text;
+  } else {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + settings.apiKey },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1024
+      })
+    });
+    if (!resp.ok) throw new Error('API error ' + resp.status);
+    const data = await resp.json();
+    return data.choices[0].message.content;
+  }
+}
+
+// ============ SETTINGS ============
+function getSettings() {
+  return {
+    provider: localStorage.getItem('cvboost_provider') || 'demo',
+    apiKey: localStorage.getItem('cvboost_apikey') || ''
+  };
+}
+
+function loadSettings() {
+  const s = getSettings();
+  document.getElementById('aiProvider').value = s.provider;
+  document.getElementById('apiKey').value = s.apiKey;
+}
+
+function saveSettings() {
+  localStorage.setItem('cvboost_provider', document.getElementById('aiProvider').value);
+  localStorage.setItem('cvboost_apikey', document.getElementById('apiKey').value);
+}
+
+// ============ DEMO MODE AI ============
+function getDemoResponse(userMsg) {
+  const msg = userMsg.toLowerCase();
+  const hasCV = !!cvText;
+  const delay = 800 + Math.random() * 1200;
+
+  return new Promise(resolve => setTimeout(() => {
+    if (!hasCV && (msg.includes('review') || msg.includes('improve') || msg.includes('rewrite') || msg.includes('tailor') || msg.includes('ats'))) {
+      resolve("I'd love to help improve your CV! First, please upload it or paste the text using the buttons above the chat input.\n\nOnce I have your CV, I can:\n- **Review** it for impact and clarity\n- **Tailor** it for specific job roles\n- **Optimize** it for ATS (Applicant Tracking Systems)\n- **Rewrite** weak bullet points into achievement-focused statements");
+      return;
+    }
+
+    if (msg.includes('review') || msg.includes('check') || msg.includes('look at')) {
+      resolve("**CV Review — Key Findings:**\n\nHere's what I noticed in your CV:\n\n**Strengths:**\n- Good overall structure and readability\n- Professional experience is clearly listed\n\n**Areas to Improve:**\n1. **Summary Section** — Your summary should be 2-3 lines max, focused on your value proposition. Lead with years of experience + domain + key achievement.\n\n2. **Bullet Points** — Switch from responsibility-based to achievement-based format. Instead of \"Managed a team of 5\", try \"Led a team of 5 to deliver $2M project 3 weeks ahead of schedule.\"\n\n3. **Quantify Results** — Add numbers wherever possible: revenue, %, time saved, team size, etc.\n\n4. **Skills Section** — Move it higher. Many ATS systems scan skills first. Group them by category (Technical, Tools, Soft Skills).\n\n5. **Keywords** — Make sure the role-specific keywords from job descriptions appear naturally in your CV.\n\n**[DEMO MODE]** Switch to OpenAI or Anthropic in Settings for personalized, detailed analysis of YOUR actual CV content.");
+      return;
+    }
+
+    if (msg.includes('ats') || msg.includes('tracking system') || msg.includes('friendly')) {
+      resolve("**Making Your CV ATS-Friendly:**\n\nATS (Applicant Tracking Systems) are used by 99% of large companies to filter CVs. Here's how to beat them:\n\n1. **Use standard section headings**: \"Experience\", \"Education\", \"Skills\" — not creative alternatives\n\n2. **Simple formatting**: No tables, text boxes, columns, headers/footers, or images. Single column is safest.\n\n3. **File format**: Use .docx (not PDF) unless the job says otherwise. Some older ATS can't parse PDFs well.\n\n4. **Mirror keywords**: Copy exact phrases from the job description. If they say \"project management\", don't write \"managed projects.\"\n\n5. **Standard fonts**: Arial, Calibri, Times New Roman. Size 10-12pt.\n\n6. **No special characters**: Avoid icons, emojis, or symbols — use plain bullet points.\n\n7. **Include a Skills section**: List hard skills explicitly so the ATS can match them.\n\n**Quick test**: Copy your CV into plain text (Notepad). If it's readable and in order, most ATS systems can parse it.\n\n**[DEMO MODE]** For a tailored ATS optimization of your specific CV, connect a real AI provider in Settings.");
+      return;
+    }
+
+    if (msg.includes('product manager') || msg.includes('pm role') || msg.includes('pm ')) {
+      resolve("**Tailoring Your CV for Product Manager Roles:**\n\n**Key things PM recruiters look for:**\n1. Evidence of product ownership (\"owned roadmap\", \"defined strategy\")\n2. Cross-functional leadership (working with engineering, design, marketing)\n3. Data-driven decisions (A/B tests, metrics, KPIs)\n4. Customer obsession (user research, feedback loops)\n5. Business impact (revenue, growth, engagement numbers)\n\n**Power verbs for PM CVs:**\nLaunched, Defined, Prioritized, Drove, Influenced, Shipped, Scaled, Optimized, Discovered, Aligned\n\n**Example bullet point transformation:**\n- Before: \"Worked on product features with the dev team\"\n- After: \"Defined and launched 3 key features driving 25% increase in user engagement, collaborating with a 12-person engineering team using agile methodology\"\n\n**Must-have sections:**\n- Product experience with metrics\n- Technical skills (SQL, analytics tools, prototyping)\n- Stakeholder management examples\n\n**[DEMO MODE]** Switch to a real AI provider to get a full rewrite of your CV targeted at specific PM job descriptions.");
+      return;
+    }
+
+    if (msg.includes('summary') || msg.includes('objective') || msg.includes('about me') || msg.includes('profile')) {
+      resolve("**Improving Your CV Summary:**\n\nA great summary is 2-3 lines that answer: \"Why should we interview this person?\"\n\n**Formula:** [Years] of experience in [Domain] + [Key skill/specialty] + [Biggest achievement or value prop]\n\n**Examples:**\n\n\"Results-driven product manager with 6+ years leading B2B SaaS products from concept to scale. Proven track record of driving $4M ARR growth through data-informed roadmaps and cross-functional team alignment.\"\n\n\"Full-stack developer with 8 years of experience building scalable web applications. Specialized in React and Node.js, with a passion for clean architecture and developer experience. Led migration of monolith to microservices serving 2M+ users.\"\n\n**Common mistakes to avoid:**\n- Starting with \"I am a...\" — drop the \"I\"\n- Being too vague: \"Hard-working team player\" says nothing\n- Making it too long — recruiters spend 6 seconds scanning\n- Including an \"Objective\" — objectives are about you, summaries are about your value to them\n\n**[DEMO MODE]** Connect a real AI provider in Settings to get a custom-written summary based on your actual experience.");
+      return;
+    }
+
+    if (msg.includes('cover letter')) {
+      resolve("**Cover Letter Tips:**\n\nA great cover letter has 3 paragraphs:\n\n**Paragraph 1 — Hook:** Why this company, this role, right now? Show you've researched them.\n\n**Paragraph 2 — Evidence:** Your 2-3 most relevant achievements that prove you can do THIS job. Use the STAR format.\n\n**Paragraph 3 — Close:** Enthusiasm + call to action. \"I'd welcome the chance to discuss how my experience in X can help [Company] achieve Y.\"\n\n**Pro tip:** Use the Auto-Apply Tools tab to generate a tailored cover letter from any job description!\n\n**[DEMO MODE]** For AI-generated cover letters, try the Auto-Apply Tools tab or switch to a real AI provider.");
+      return;
+    }
+
+    if (msg.includes('linkedin') || msg.includes('network') || msg.includes('outreach')) {
+      resolve("**LinkedIn Optimization Tips:**\n\n1. **Headline** — Don't just put your job title. Use the format: \"[Role] | [What you do] | [For whom]\"\n   Example: \"Product Manager | Building AI-powered tools for SMBs | Ex-Google\"\n\n2. **About section** — Tell your story in first person. What drives you, what you've achieved, what you're looking for.\n\n3. **Experience** — Mirror your CV but write in a more conversational tone. LinkedIn allows richer formatting.\n\n4. **Connections** — Aim for 500+. Connect with recruiters in your target industry.\n\n5. **Activity** — Post or comment 2-3x per week. Recruiters check your activity.\n\n**For outreach messages**, use the Auto-Apply Tools tab — it generates personalized recruiter messages!\n\n**[DEMO MODE]** Switch to a real AI provider for personalized LinkedIn profile optimization.");
+      return;
+    }
+
+    // Default response
+    resolve("Great question! Here are some general CV tips I can help with:\n\n**Quick Wins:**\n1. Start every bullet point with a strong action verb\n2. Add numbers and metrics to at least 60% of your bullet points\n3. Keep it to 1-2 pages max (1 page if under 10 years experience)\n4. Use consistent formatting throughout\n5. Tailor your CV for each application — one size does NOT fit all\n\n**Try asking me about:**\n- \"Review my CV\" — Get a detailed analysis\n- \"Make it ATS-friendly\" — Optimize for automated screening\n- \"Tailor for PM role\" — Customize for Product Manager positions\n- \"Improve my summary\" — Rewrite your profile section\n- \"LinkedIn tips\" — Optimize your LinkedIn profile\n- \"Cover letter help\" — Get cover letter advice\n\n**[DEMO MODE]** You're using simulated responses. For real AI-powered analysis of your specific CV, switch to OpenAI or Anthropic in Settings — both offer free trial credits!");
+  }, delay));
+}
+
+function getDemoCoverLetter(jd) {
+  return new Promise(resolve => setTimeout(() => {
+    const words = jd.split(/\s+/).slice(0, 5).join(' ');
+    resolve(`Dear Hiring Manager,
+
+I am writing to express my strong interest in this position. Having reviewed the role requirements, I am confident that my background and skills make me an excellent fit.
+
+Throughout my career, I have developed deep expertise relevant to this opportunity. My experience includes driving cross-functional initiatives, delivering measurable results, and building strong stakeholder relationships. In my most recent role, I led projects that directly impacted business growth and operational efficiency.
+
+What particularly excites me about this opportunity is the chance to bring my skills to a team that values innovation and impact. I am passionate about creating value and am eager to contribute to your organization's success.
+
+I would welcome the opportunity to discuss how my experience aligns with your needs. Thank you for considering my application.
+
+Best regards,
+[Your Name]
+
+---
+**[DEMO MODE]** This is a generic template. For a truly personalized cover letter that references YOUR specific CV experience and matches the exact job requirements, switch to OpenAI or Anthropic in Settings. The real AI will craft a unique letter pulling specific achievements from your CV that match the job description.`);
+  }, 1000));
+}
+
+function getDemoLinkedInMsg(jd, name) {
+  return new Promise(resolve => setTimeout(() => {
+    const greeting = name ? `Hi ${name},` : 'Hi,';
+    resolve(`${greeting}
+
+I came across this role and was immediately drawn to the opportunity. My background in driving results and building effective solutions aligns well with what you're looking for.
+
+I'd love to learn more about the team and how I might contribute. Would you be open to a brief chat this week?
+
+Looking forward to connecting!
+
+---
+**[DEMO MODE]** This is a generic template. For a personalized message that references specific details from the job description and your experience, switch to a real AI provider in Settings.`);
+  }, 800));
+}
+
+function toggleKeyVisibility() {
+  const inp = document.getElementById('apiKey');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function updateProviderGuide() {
+  const provider = document.getElementById('aiProvider').value;
+  const guideTitle = document.getElementById('guideTitle');
+  const guideLink = document.getElementById('guideLink');
+  const guideSteps = document.getElementById('guideSteps');
+  const apiGuide = document.getElementById('apiGuide');
+  const apiKeyGroup = document.getElementById('apiKeyGroup');
+
+  if (provider === 'demo') {
+    apiGuide.style.display = 'block';
+    if (apiKeyGroup) apiKeyGroup.style.display = 'none';
+    guideTitle.textContent = 'Demo Mode Active';
+    guideLink.style.display = 'none';
+    guideSteps.innerHTML = 'You can try all features with smart simulated AI responses.<br>No API key needed! When you\'re ready for real AI, switch to OpenAI or Anthropic above.';
+  } else if (provider === 'openai') {
+    apiGuide.style.display = 'block';
+    if (apiKeyGroup) apiKeyGroup.style.display = 'block';
+    guideLink.style.display = '';
+    guideTitle.textContent = 'Get your OpenAI API key in 3 steps:';
+    guideLink.href = 'https://platform.openai.com/api-keys';
+    guideLink.textContent = 'Open OpenAI Console';
+    guideSteps.innerHTML = '<b>1.</b> Click the button above to go to <b>platform.openai.com</b><br><b>2.</b> Sign up or log in, then go to <b>API Keys</b><br><b>3.</b> Click <b>"Create new secret key"</b>, copy it, and paste it below';
+  } else {
+    apiGuide.style.display = 'block';
+    if (apiKeyGroup) apiKeyGroup.style.display = 'block';
+    guideLink.style.display = '';
+    guideTitle.textContent = 'Get your Anthropic API key in 3 steps:';
+    guideLink.href = 'https://console.anthropic.com/settings/keys';
+    guideLink.textContent = 'Open Anthropic Console';
+    guideSteps.innerHTML = '<b>1.</b> Click the button above to go to <b>console.anthropic.com</b><br><b>2.</b> Sign up or log in, then go to <b>API Keys</b><br><b>3.</b> Click <b>"Create Key"</b>, copy it, and paste it below';
+  }
+}
+
+async function testAPIKey() {
+  const settings = getSettings();
+  if (!settings.apiKey) return;
+  const result = document.getElementById('apiTestResult');
+  result.style.display = 'block';
+  result.style.color = 'var(--yellow)';
+  result.textContent = 'Testing connection...';
+
+  try {
+    if (settings.provider === 'anthropic') {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': settings.apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 10, messages: [{ role: 'user', content: 'Hi' }] })
+      });
+      if (resp.ok) { result.style.color = 'var(--green)'; result.textContent = 'API key works! You\'re all set.'; }
+      else { const err = await resp.json().catch(() => ({})); throw new Error(err.error?.message || 'HTTP ' + resp.status); }
+    } else {
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + settings.apiKey },
+        body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content: 'Hi' }], max_tokens: 10 })
+      });
+      if (resp.ok) { result.style.color = 'var(--green)'; result.textContent = 'API key works! You\'re all set.'; }
+      else { const err = await resp.json().catch(() => ({})); throw new Error(err.error?.message || 'HTTP ' + resp.status); }
+    }
+  } catch (err) {
+    result.style.color = 'var(--red)';
+    result.textContent = 'Failed: ' + err.message;
+  }
+}
+
+// Initialize provider guide on load
+updateProviderGuide();
+</script>
+</body>
+</html>

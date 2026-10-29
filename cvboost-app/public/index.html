@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVBoost — AI CV Redesign & LinkedIn Job Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #dbeafe;
+            --accent: #06b6d4;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gradient: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+            --shadow: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+            --radius: 12px;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+
+        /* NAV */
+        nav { background:rgba(255,255,255,0.95); border-bottom:1px solid var(--border); padding:0 2rem; position:sticky; top:0; z-index:100; backdrop-filter:blur(12px); }
+        .nav-inner { max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:64px; }
+        .logo { font-weight:800; font-size:1.4rem; background:var(--gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; cursor:pointer; }
+        .nav-links { display:flex; gap:0.25rem; }
+        .nav-links button { background:none; border:none; padding:0.5rem 1rem; font-size:0.9rem; font-weight:500; color:var(--text-secondary); cursor:pointer; border-radius:8px; transition:all 0.2s; font-family:inherit; }
+        .nav-links button:hover { background:var(--primary-light); color:var(--primary); }
+        .nav-links button.active { background:var(--primary); color:white; }
+        .user-badge { display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; color:var(--text-secondary); }
+        .user-badge .avatar { width:32px; height:32px; border-radius:50%; background:var(--gradient); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.8rem; }
+        .logout-btn { background:none; border:none; color:var(--danger); font-size:0.8rem; cursor:pointer; font-family:inherit; margin-left:0.5rem; }
+
+        /* PAGES */
+        .page { display:none; padding:2rem; max-width:1280px; margin:0 auto; }
+        .page.active { display:block; }
+
+        /* AUTH */
+        .auth-container { display:flex; align-items:center; justify-content:center; min-height:80vh; }
+        .auth-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:3rem; max-width:420px; width:100%; text-align:center; }
+        .auth-card h1 { font-size:2rem; margin-bottom:0.5rem; background:var(--gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .auth-card p { color:var(--text-secondary); margin-bottom:2rem; font-size:0.95rem; }
+        .auth-card input { width:100%; border:1px solid var(--border); border-radius:8px; padding:0.7rem 1rem; font-family:inherit; font-size:0.95rem; margin-bottom:0.75rem; outline:none; }
+        .auth-card input:focus { border-color:var(--primary); }
+        .auth-card .btn-primary { width:100%; }
+        .auth-card .switch { margin-top:1rem; font-size:0.85rem; color:var(--text-secondary); }
+        .auth-card .switch a { color:var(--primary); cursor:pointer; text-decoration:none; font-weight:500; }
+
+        /* HERO */
+        .hero { text-align:center; padding:4rem 1rem 3rem; }
+        .hero h1 { font-size:3rem; font-weight:800; line-height:1.15; margin-bottom:1rem; }
+        .hero h1 span { background:var(--gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .hero p { font-size:1.15rem; color:var(--text-secondary); max-width:600px; margin:0 auto 2rem; }
+        .hero-cta { display:inline-flex; align-items:center; gap:0.5rem; background:var(--gradient); color:white; border:none; padding:0.85rem 2rem; font-size:1rem; font-weight:600; border-radius:10px; cursor:pointer; transition:transform 0.2s,box-shadow 0.2s; font-family:inherit; }
+        .hero-cta:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+
+        .features-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.5rem; margin-top:3rem; }
+        .feature-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:2rem; text-align:left; transition:transform 0.2s,box-shadow 0.2s; }
+        .feature-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); }
+        .feature-icon { width:48px; height:48px; background:var(--primary-light); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; margin-bottom:1rem; }
+        .feature-card h3 { font-size:1.1rem; margin-bottom:0.5rem; }
+        .feature-card p { font-size:0.9rem; color:var(--text-secondary); }
+
+        /* CV SECTION */
+        .cv-layout { display:grid; grid-template-columns:260px 1fr; gap:1.5rem; height:calc(100vh - 140px); min-height:500px; }
+        @media(max-width:900px) { .cv-layout { grid-template-columns:1fr; height:auto; } }
+        .sidebar { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); display:flex; flex-direction:column; overflow:hidden; }
+        .sidebar-header { padding:1rem 1.25rem; border-bottom:1px solid var(--border); font-weight:600; font-size:0.9rem; display:flex; justify-content:space-between; align-items:center; }
+        .sidebar-body { flex:1; overflow-y:auto; padding:0.5rem; }
+        .session-item { padding:0.6rem 0.75rem; border-radius:8px; cursor:pointer; font-size:0.85rem; display:flex; justify-content:space-between; align-items:center; transition:background 0.15s; }
+        .session-item:hover { background:var(--bg); }
+        .session-item.active { background:var(--primary-light); color:var(--primary); font-weight:500; }
+        .session-item .del-btn { background:none; border:none; color:var(--danger); cursor:pointer; font-size:0.8rem; opacity:0; transition:opacity 0.15s; }
+        .session-item:hover .del-btn { opacity:1; }
+
+        .chat-area { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; height:100%; }
+        @media(max-width:1100px) { .chat-area { grid-template-columns:1fr; } }
+        .panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); display:flex; flex-direction:column; overflow:hidden; }
+        .panel-header { padding:1rem 1.25rem; border-bottom:1px solid var(--border); font-weight:600; font-size:0.95rem; display:flex; align-items:center; gap:0.5rem; }
+        .panel-body { flex:1; overflow-y:auto; padding:1.25rem; }
+
+        /* UPLOAD */
+        .upload-area { border:2px dashed var(--border); border-radius:var(--radius); padding:2.5rem 1.5rem; text-align:center; cursor:pointer; transition:all 0.2s; margin-bottom:1rem; }
+        .upload-area:hover,.upload-area.dragover { border-color:var(--primary); background:var(--primary-light); }
+        .upload-area .icon { font-size:2.5rem; margin-bottom:0.5rem; }
+        .upload-area h3 { font-size:0.95rem; margin-bottom:0.2rem; }
+        .upload-area p { font-size:0.8rem; color:var(--text-secondary); }
+        .cv-text-input { width:100%; min-height:150px; border:1px solid var(--border); border-radius:8px; padding:0.75rem; font-family:inherit; font-size:0.85rem; resize:vertical; outline:none; }
+        .cv-text-input:focus { border-color:var(--primary); }
+        .or-divider { text-align:center; color:var(--text-secondary); font-size:0.8rem; margin:0.5rem 0; position:relative; }
+        .or-divider::before,.or-divider::after { content:''; position:absolute; top:50%; width:38%; height:1px; background:var(--border); }
+        .or-divider::before { left:0; } .or-divider::after { right:0; }
+
+        .cv-selector { margin-bottom:1rem; }
+        .cv-selector select { width:100%; border:1px solid var(--border); border-radius:8px; padding:0.5rem 0.75rem; font-family:inherit; font-size:0.85rem; }
+
+        /* CHAT */
+        .chat-messages { flex:1; overflow-y:auto; padding:1.25rem; display:flex; flex-direction:column; gap:0.75rem; }
+        .chat-msg { max-width:85%; padding:0.7rem 1rem; border-radius:12px; font-size:0.88rem; line-height:1.55; white-space:pre-wrap; }
+        .chat-msg.bot { background:var(--primary-light); align-self:flex-start; border-bottom-left-radius:4px; }
+        .chat-msg.user { background:var(--primary); color:white; align-self:flex-end; border-bottom-right-radius:4px; }
+        .chat-msg.typing .dots span { display:inline-block; width:6px; height:6px; background:var(--primary); border-radius:50%; margin:0 2px; animation:bounce 1.2s infinite; }
+        .chat-msg.typing .dots span:nth-child(2) { animation-delay:0.2s; }
+        .chat-msg.typing .dots span:nth-child(3) { animation-delay:0.4s; }
+        @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+        .chat-input-area { padding:0.75rem 1rem; border-top:1px solid var(--border); display:flex; gap:0.5rem; }
+        .chat-input { flex:1; border:1px solid var(--border); border-radius:8px; padding:0.55rem 0.75rem; font-family:inherit; font-size:0.88rem; outline:none; }
+        .chat-input:focus { border-color:var(--primary); }
+
+        /* BUTTONS */
+        .btn { display:inline-flex; align-items:center; gap:0.4rem; padding:0.6rem 1.25rem; border-radius:8px; font-size:0.9rem; font-weight:500; cursor:pointer; border:none; font-family:inherit; transition:all 0.2s; }
+        .btn-primary { background:var(--primary); color:white; }
+        .btn-primary:hover { background:var(--primary-dark); }
+        .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+        .btn-outline:hover { background:var(--bg); }
+        .btn-sm { padding:0.35rem 0.7rem; font-size:0.8rem; }
+        .btn-danger { background:var(--danger); color:white; }
+        .btn-danger:hover { background:#dc2626; }
+        .send-btn { background:var(--primary); color:white; border:none; border-radius:8px; padding:0.55rem 1rem; font-weight:600; cursor:pointer; font-family:inherit; }
+        .send-btn:hover { background:var(--primary-dark); }
+        .send-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+        /* TRACKER */
+        .tracker-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; }
+        .tracker-header h2 { font-size:1.5rem; }
+        .stats-row { display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+        .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1.5rem; flex:1; min-width:140px; }
+        .stat-card .label { font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.2rem; }
+        .stat-card .value { font-size:1.75rem; font-weight:700; }
+        .stat-card .value.blue { color:var(--primary); }
+        .stat-card .value.green { color:var(--success); }
+        .stat-card .value.yellow { color:var(--warning); }
+        .stat-card .value.red { color:var(--danger); }
+
+        .table-wrapper { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow-x:auto; }
+        table { width:100%; border-collapse:collapse; }
+        th,td { padding:0.8rem 1.25rem; text-align:left; font-size:0.88rem; }
+        th { background:var(--bg); font-weight:600; font-size:0.78rem; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.03em; }
+        td { border-top:1px solid var(--border); }
+        tr:hover td { background:#f8faff; }
+        .badge { display:inline-block; padding:0.2rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:600; }
+        .badge-applied { background:var(--primary-light); color:var(--primary); }
+        .badge-interview { background:#d1fae5; color:#059669; }
+        .badge-rejected { background:#fee2e2; color:var(--danger); }
+        .badge-offer { background:#fef3c7; color:#d97706; }
+        .badge-saved { background:#f1f5f9; color:var(--text-secondary); }
+        .empty-state { text-align:center; padding:4rem 2rem; color:var(--text-secondary); }
+        .empty-state .icon { font-size:3rem; margin-bottom:1rem; }
+
+        /* AUTO APPLY */
+        .auto-section { max-width:800px; }
+        .auto-section h2 { font-size:1.5rem; margin-bottom:0.5rem; }
+        .auto-section > p { color:var(--text-secondary); margin-bottom:2rem; }
+        .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem 2rem; margin-bottom:1.25rem; }
+        .card h3 { margin-bottom:0.75rem; }
+        .card p.desc { font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem; }
+        .pref-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+        @media(max-width:600px) { .pref-grid { grid-template-columns:1fr; } }
+        .pref-field label { display:block; font-size:0.85rem; font-weight:500; margin-bottom:0.3rem; }
+        .pref-field input,.pref-field select { width:100%; border:1px solid var(--border); border-radius:8px; padding:0.5rem 0.75rem; font-family:inherit; font-size:0.88rem; outline:none; }
+        .pref-field input:focus,.pref-field select:focus { border-color:var(--primary); }
+
+        .gen-box textarea { width:100%; min-height:120px; border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; font-family:inherit; font-size:0.88rem; resize:vertical; outline:none; }
+        .gen-box textarea:focus { border-color:var(--primary); }
+        .btn-row { display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap; }
+
+        /* SETTINGS */
+        .settings-section { max-width:600px; }
+        .settings-section h2 { font-size:1.5rem; margin-bottom:1.5rem; }
+
+        /* MODAL */
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:200; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+        .modal-overlay.show { opacity:1; pointer-events:all; }
+        .modal { background:var(--surface); border-radius:var(--radius); padding:2rem; max-width:500px; width:90%; box-shadow:var(--shadow-lg); transform:translateY(20px); transition:transform 0.2s; }
+        .modal-overlay.show .modal { transform:translateY(0); }
+        .modal h3 { margin-bottom:1.25rem; }
+        .modal .form-group { margin-bottom:1rem; }
+        .modal label { display:block; font-size:0.85rem; font-weight:500; margin-bottom:0.3rem; }
+        .modal input,.modal select { width:100%; border:1px solid var(--border); border-radius:8px; padding:0.55rem 0.75rem; font-family:inherit; font-size:0.88rem; outline:none; }
+        .modal input:focus,.modal select:focus { border-color:var(--primary); }
+        .modal-actions { display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1.5rem; }
+
+        ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+        .toast { position:fixed; bottom:2rem; right:2rem; background:var(--text); color:white; padding:0.75rem 1.25rem; border-radius:8px; font-size:0.88rem; z-index:300; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+        .toast.show { opacity:1; }
+    </style>
+</head>
+<body>
+
+<!-- AUTH PAGE -->
+<div id="authPage" class="auth-container">
+    <div class="auth-card">
+        <h1>CVBoost</h1>
+        <p>AI-powered CV redesign & LinkedIn job tracker</p>
+        <div id="authLogin">
+            <input type="text" id="loginEmail" placeholder="Email address" onkeydown="if(event.key==='Enter')login()">
+            <button class="btn btn-primary" onclick="login()">Log In</button>
+            <div class="switch">Don't have an account? <a onclick="showRegister()">Sign up</a></div>
+        </div>
+        <div id="authRegister" style="display:none;">
+            <input type="text" id="regName" placeholder="Full name">
+            <input type="text" id="regEmail" placeholder="Email address" onkeydown="if(event.key==='Enter')register()">
+            <button class="btn btn-primary" onclick="register()">Create Account</button>
+            <div class="switch">Already have an account? <a onclick="showLogin()">Log in</a></div>
+        </div>
+        <div id="authError" style="color:var(--danger); font-size:0.85rem; margin-top:0.75rem;"></div>
+    </div>
+</div>
+
+<!-- MAIN APP (hidden until login) -->
+<div id="appMain" style="display:none;">
+<nav>
+    <div class="nav-inner">
+        <div class="logo" onclick="showPage('home')">CVBoost</div>
+        <div class="nav-links">
+            <button onclick="showPage('home')" id="nav-home" class="active">Home</button>
+            <button onclick="showPage('cv')" id="nav-cv">CV Chat</button>
+            <button onclick="showPage('tracker')" id="nav-tracker">Tracker</button>
+            <button onclick="showPage('auto')" id="nav-auto">Auto Apply</button>
+            <button onclick="showPage('settings')" id="nav-settings">Settings</button>
+        </div>
+        <div class="user-badge">
+            <div class="avatar" id="userAvatar"></div>
+            <span id="userName"></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</nav>
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+    <div class="hero">
+        <h1>Redesign Your CV.<br><span>Land Your Dream Job.</span></h1>
+        <p>Upload your CV, chat with AI to perfect it, track your LinkedIn applications, and generate auto-apply messages — all in one place.</p>
+        <button class="hero-cta" onclick="showPage('cv')">Get Started &rarr;</button>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#x1f4ac;</div>
+                <h3>AI CV Chat</h3>
+                <p>Chat with AI to restructure and tailor your CV for any role. All sessions saved for future use.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1f4cb;</div>
+                <h3>Application Tracker</h3>
+                <p>Track every LinkedIn application — status, dates, notes, and follow-ups in one dashboard.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1f680;</div>
+                <h3>Auto Apply Tools</h3>
+                <p>Generate tailored cover letters and LinkedIn messages from any job description instantly.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CV CHAT -->
+<div class="page" id="page-cv">
+    <div class="cv-layout">
+        <!-- Sidebar: Sessions -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span>Chat Sessions</span>
+                <button class="btn btn-primary btn-sm" onclick="newSession()">+ New</button>
+            </div>
+            <div class="sidebar-body" id="sessionList"></div>
+        </div>
+        <!-- Main: Upload + Chat -->
+        <div class="chat-area">
+            <!-- Left: CV panel -->
+            <div class="panel">
+                <div class="panel-header">&#x1f4c4; Your CV</div>
+                <div class="panel-body">
+                    <div class="cv-selector">
+                        <select id="cvSelect" onchange="selectCV()">
+                            <option value="">— Select a saved CV —</option>
+                        </select>
+                    </div>
+                    <div class="upload-area" id="uploadArea">
+                        <div class="icon">&#x1f4c1;</div>
+                        <h3>Drop your CV or click to upload</h3>
+                        <p>PDF or TXT</p>
+                        <input type="file" id="fileInput" accept=".pdf,.txt" style="display:none">
+                    </div>
+                    <div class="or-divider">or paste text</div>
+                    <textarea class="cv-text-input" id="cvTextArea" placeholder="Paste your CV content here..."></textarea>
+                    <div style="margin-top:0.6rem; display:flex; gap:0.5rem;">
+                        <button class="btn btn-primary btn-sm" onclick="uploadCV()">Save CV</button>
+                        <button class="btn btn-outline btn-sm" onclick="clearCVForm()">Clear</button>
+                    </div>
+                    <div id="cvStatus" style="margin-top:0.5rem; font-size:0.82rem; color:var(--success); display:none;"></div>
+                </div>
+            </div>
+            <!-- Right: Chat -->
+            <div class="panel">
+                <div class="panel-header">&#x1f916; AI CV Assistant</div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-msg bot">Hi! Upload or select your CV on the left, start a session, and ask me anything — I'll help you tailor, rewrite, and improve it.</div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Ask me to improve your CV..." onkeydown="if(event.key==='Enter')sendChat()">
+                    <button class="send-btn" id="sendBtn" onclick="sendChat()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TRACKER -->
+<div class="page" id="page-tracker">
+    <div class="tracker-header">
+        <h2>LinkedIn Application Tracker</h2>
+        <button class="btn btn-primary" onclick="openAppModal()">+ Add Application</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat-card"><div class="label">Total</div><div class="value blue" id="statTotal">0</div></div>
+        <div class="stat-card"><div class="label">Applied</div><div class="value blue" id="statApplied">0</div></div>
+        <div class="stat-card"><div class="label">Interviews</div><div class="value green" id="statInterview">0</div></div>
+        <div class="stat-card"><div class="label">Offers</div><div class="value yellow" id="statOffer">0</div></div>
+        <div class="stat-card"><div class="label">Rejected</div><div class="value red" id="statRejected">0</div></div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Company</th><th>Position</th><th>Status</th><th>Date</th><th>Notes</th><th>Actions</th></tr></thead>
+            <tbody id="trackerBody"></tbody>
+        </table>
+        <div class="empty-state" id="trackerEmpty">
+            <div class="icon">&#x1f4bc;</div>
+            <h3>No applications yet</h3>
+            <p>Click "Add Application" to start tracking.</p>
+        </div>
+    </div>
+</div>
+
+<!-- AUTO APPLY -->
+<div class="page" id="page-auto">
+    <div class="auto-section">
+        <h2>Auto Apply Tools</h2>
+        <p>Set preferences, paste a job description, and get an AI-tailored cover letter or LinkedIn message.</p>
+
+        <div class="card">
+            <h3>Your Preferences</h3>
+            <div class="pref-grid">
+                <div class="pref-field"><label>Target Role</label><input type="text" id="prefRole" placeholder="e.g., Data Analyst"></div>
+                <div class="pref-field"><label>Location</label><input type="text" id="prefLocation" placeholder="e.g., Tel Aviv, Remote"></div>
+                <div class="pref-field"><label>Experience Level</label>
+                    <select id="prefLevel"><option>Entry Level</option><option>Mid Level</option><option>Senior</option><option>Lead / Manager</option></select>
+                </div>
+                <div class="pref-field"><label>Industry</label><input type="text" id="prefIndustry" placeholder="e.g., Tech, Finance"></div>
+            </div>
+            <div style="margin-top:1rem;"><button class="btn btn-primary btn-sm" onclick="savePrefs()">Save Preferences</button></div>
+        </div>
+
+        <div class="card">
+            <h3>Select CV</h3>
+            <select id="autoCvSelect" style="width:100%; border:1px solid var(--border); border-radius:8px; padding:0.5rem 0.75rem; font-family:inherit; font-size:0.88rem;">
+                <option value="">— Select a saved CV —</option>
+            </select>
+        </div>
+
+        <div class="card gen-box">
+            <h3>Generate Application Message</h3>
+            <textarea id="jobDescInput" placeholder="Paste the job description here..."></textarea>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="generateMsg('cover')">Generate Cover Letter</button>
+                <button class="btn btn-outline" onclick="generateMsg('linkedin')">Generate LinkedIn Message</button>
+            </div>
+            <div id="genOutput" style="margin-top:1rem; display:none;">
+                <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Generated:</label>
+                <textarea id="genText" style="width:100%; min-height:150px; border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; font-family:inherit; font-size:0.88rem; resize:vertical;"></textarea>
+                <div class="btn-row">
+                    <button class="btn btn-outline btn-sm" onclick="copyGen()">Copy</button>
+                    <button class="btn btn-primary btn-sm" onclick="showPage('tracker');openAppModal()">+ Add to Tracker</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="page" id="page-settings">
+    <div class="settings-section">
+        <h2>Settings</h2>
+        <div class="card">
+            <h3>AI Provider</h3>
+            <p class="desc">Your API key powers CV chat and auto-apply features. It's stored securely in the database.</p>
+            <div style="display:flex; gap:0.5rem;">
+                <select id="settProvider" style="border:1px solid var(--border); border-radius:8px; padding:0.5rem; font-family:inherit;">
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic (Claude)</option>
+                </select>
+                <input type="password" id="settApiKey" placeholder="sk-..." style="flex:1; border:1px solid var(--border); border-radius:8px; padding:0.5rem 0.75rem; font-family:inherit;">
+                <button class="btn btn-primary" onclick="saveApiKey()">Save</button>
+            </div>
+            <div id="settKeyStatus" style="margin-top:0.5rem; font-size:0.82rem;"></div>
+        </div>
+        <div class="card">
+            <h3>My CVs</h3>
+            <div id="cvList"></div>
+        </div>
+    </div>
+</div>
+</div> <!-- /appMain -->
+
+<!-- MODAL: Add/Edit Application -->
+<div class="modal-overlay" id="appModal">
+    <div class="modal">
+        <h3 id="appModalTitle">Add Application</h3>
+        <div class="form-group"><label>Company</label><input type="text" id="mCompany" placeholder="e.g., Google"></div>
+        <div class="form-group"><label>Position</label><input type="text" id="mPosition" placeholder="e.g., Data Analyst"></div>
+        <div class="form-group"><label>Status</label><select id="mStatus"><option value="saved">Saved</option><option value="applied" selected>Applied</option><option value="interview">Interview</option><option value="offer">Offer</option><option value="rejected">Rejected</option></select></div>
+        <div class="form-group"><label>Date Applied</label><input type="date" id="mDate"></div>
+        <div class="form-group"><label>Job URL</label><input type="text" id="mUrl" placeholder="https://linkedin.com/jobs/..."></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="mNotes" placeholder="Any notes..."></div>
+        <input type="hidden" id="mEditId" value="">
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeAppModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveApp()">Save</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+let user = null;
+let cvs = [];
+let sessions = [];
+let apps = [];
+let currentSession = null;
+let currentCvId = null;
+
+const API = '';
+
+// ── AUTH ──
+function showLogin() { document.getElementById('authLogin').style.display='block'; document.getElementById('authRegister').style.display='none'; document.getElementById('authError').textContent=''; }
+function showRegister() { document.getElementById('authLogin').style.display='none'; document.getElementById('authRegister').style.display='block'; document.getElementById('authError').textContent=''; }
+
+async function login() {
+    const email = document.getElementById('loginEmail').value.trim();
+    if (!email) return;
+    try {
+        const res = await fetch(API+'/api/users/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email}) });
+        const data = await res.json();
+        if (!res.ok) { document.getElementById('authError').textContent = data.error; return; }
+        user = data;
+        onLogin();
+    } catch(e) { document.getElementById('authError').textContent = 'Connection error'; }
+}
+
+async function register() {
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    if (!email) return;
+    try {
+        const res = await fetch(API+'/api/users/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,email}) });
+        const data = await res.json();
+        if (!res.ok) { document.getElementById('authError').textContent = data.error; return; }
+        user = data;
+        onLogin();
+    } catch(e) { document.getElementById('authError').textContent = 'Connection error'; }
+}
+
+function logout() {
+    user = null;
+    document.getElementById('authPage').style.display = 'flex';
+    document.getElementById('appMain').style.display = 'none';
+}
+
+async function onLogin() {
+    document.getElementById('authPage').style.display = 'none';
+    document.getElementById('appMain').style.display = 'block';
+    document.getElementById('userName').textContent = user.name || user.email;
+    document.getElementById('userAvatar').textContent = (user.name || user.email).charAt(0).toUpperCase();
+    await Promise.all([loadCVs(), loadSessions(), loadApps(), loadSettings(), loadApiKeyStatus()]);
+    showPage('home');
+}
+
+// ── NAVIGATION ──
+function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-'+page).classList.add('active');
+    document.getElementById('nav-'+page).classList.add('active');
+}
+
+// ── CVs ──
+async function loadCVs() {
+    const res = await fetch(API+'/api/cvs/'+user.id);
+    cvs = await res.json();
+    renderCVSelectors();
+    renderCVList();
+}
+
+function renderCVSelectors() {
+    const opts = '<option value="">— Select a saved CV —</option>' + cvs.map(c => `<option value="${c.id}">${esc(c.title)} (${c.file_name||'pasted'})</option>`).join('');
+    document.getElementById('cvSelect').innerHTML = opts;
+    document.getElementById('autoCvSelect').innerHTML = opts;
+    if (currentCvId) {
+        document.getElementById('cvSelect').value = currentCvId;
+        document.getElementById('autoCvSelect').value = currentCvId;
+    }
+}
+
+function renderCVList() {
+    const el = document.getElementById('cvList');
+    if (cvs.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary); font-size:0.85rem;">No CVs uploaded yet.</p>'; return; }
+    el.innerHTML = cvs.map(c => `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:0.88rem;"><strong>${esc(c.title)}</strong> <span style="color:var(--text-secondary);font-size:0.8rem;">${c.file_name||'pasted'} · ${c.created_at?.slice(0,10)||''}</span></span>
+        <button class="btn btn-danger btn-sm" onclick="deleteCV('${c.id}')">Delete</button>
+    </div>`).join('');
+}
+
+async function uploadCV() {
+    const fileInput = document.getElementById('fileInput');
+    const textArea = document.getElementById('cvTextArea');
+    const formData = new FormData();
+    formData.append('userId', user.id);
+    formData.append('title', 'My CV');
+
+    if (fileInput.files.length > 0) {
+        formData.append('file', fileInput.files[0]);
+        formData.set('title', fileInput.files[0].name.replace(/\.[^.]+$/,''));
+    } else if (textArea.value.trim()) {
+        formData.append('text', textArea.value.trim());
+    } else {
+        showCvStatus('Please upload a file or paste your CV text.'); return;
+    }
+
+    try {
+        const res = await fetch(API+'/api/cvs/upload', { method:'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) { showCvStatus(data.error); return; }
+        currentCvId = data.id;
+        showCvStatus('CV saved! You can now start a chat session.');
+        await loadCVs();
+        toast('CV uploaded successfully');
+    } catch(e) { showCvStatus('Error: '+e.message); }
+}
+
+function selectCV() { currentCvId = document.getElementById('cvSelect').value; }
+
+async function deleteCV(id) {
+    if (!confirm('Delete this CV and all related sessions?')) return;
+    await fetch(API+'/api/cvs/'+id, {method:'DELETE'});
+    await Promise.all([loadCVs(), loadSessions()]);
+    toast('CV deleted');
+}
+
+function clearCVForm() { document.getElementById('cvTextArea').value=''; document.getElementById('fileInput').value=''; showCvStatus(''); }
+function showCvStatus(msg) { const el=document.getElementById('cvStatus'); el.textContent=msg; el.style.display=msg?'block':'none'; }
+
+// Upload area drag & drop
+const uploadArea = document.getElementById('uploadArea');
+uploadArea.addEventListener('click', () => document.getElementById('fileInput').click());
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classList.remove('dragover'); document.getElementById('fileInput').files = e.dataTransfer.files; showCvStatus('File ready: '+e.dataTransfer.files[0]?.name); });
+document.getElementById('fileInput').addEventListener('change', e => { if(e.target.files.length) showCvStatus('File ready: '+e.target.files[0].name); });
+
+// ── SESSIONS ──
+async function loadSessions() {
+    const res = await fetch(API+'/api/sessions/'+user.id);
+    sessions = await res.json();
+    renderSessions();
+}
+
+function renderSessions() {
+    const el = document.getElementById('sessionList');
+    if (sessions.length === 0) { el.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text-secondary);font-size:0.82rem;">No sessions yet. Click + New to start.</div>'; return; }
+    el.innerHTML = sessions.map(s => `<div class="session-item ${currentSession?.id===s.id?'active':''}" onclick="openSession('${s.id}')">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.title)}</span>
+        <button class="del-btn" onclick="event.stopPropagation();deleteSession('${s.id}')">&#x2715;</button>
+    </div>`).join('');
+}
+
+async function newSession() {
+    if (!currentCvId) { toast('Please select or upload a CV first'); return; }
+    const cv = cvs.find(c=>c.id===currentCvId);
+    const res = await fetch(API+'/api/sessions', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ userId:user.id, cvId:currentCvId, title: 'Chat: '+(cv?.title||'CV') })
+    });
+    const data = await res.json();
+    await loadSessions();
+    openSession(data.id);
+}
+
+async function openSession(id) {
+    currentSession = sessions.find(s=>s.id===id) || {id};
+    renderSessions();
+    const res = await fetch(API+'/api/sessions/messages/'+id);
+    const msgs = await res.json();
+    const container = document.getElementById('chatMessages');
+    container.innerHTML = '<div class="chat-msg bot">Session loaded. Ask me anything about your CV!</div>';
+    msgs.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'chat-msg '+(m.role==='user'?'user':'bot');
+        div.textContent = m.content;
+        container.appendChild(div);
+    });
+    container.scrollTop = container.scrollHeight;
+}
+
+async function deleteSession(id) {
+    await fetch(API+'/api/sessions/'+id, {method:'DELETE'});
+    if (currentSession?.id===id) { currentSession=null; document.getElementById('chatMessages').innerHTML='<div class="chat-msg bot">Select or start a session.</div>'; }
+    await loadSessions();
+    toast('Session deleted');
+}
+
+// ── CHAT ──
+async function sendChat() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    if (!currentSession) { toast('Start a new session first'); return; }
+
+    addMsg('user', msg);
+    input.value = '';
+    document.getElementById('sendBtn').disabled = true;
+    showTyping();
+
+    try {
+        const res = await fetch(API+'/api/chat', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ userId:user.id, sessionId:currentSession.id, message:msg })
+        });
+        const data = await res.json();
+        removeTyping();
+        if (!res.ok) { addMsg('bot','Error: '+(data.error||'Something went wrong')); }
+        else { addMsg('bot', data.response); }
+    } catch(e) { removeTyping(); addMsg('bot','Error: '+e.message); }
+    document.getElementById('sendBtn').disabled = false;
+}
+
+function addMsg(role, text) {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'chat-msg '+(role==='user'?'user':'bot');
+    div.textContent = text;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className='chat-msg bot typing'; div.id='typingInd';
+    div.innerHTML='<div class="dots"><span></span><span></span><span></span></div>';
+    container.appendChild(div); container.scrollTop = container.scrollHeight;
+}
+function removeTyping() { document.getElementById('typingInd')?.remove(); }
+
+// ── TRACKER ──
+async function loadApps() {
+    const res = await fetch(API+'/api/applications/'+user.id);
+    apps = await res.json();
+    renderApps();
+}
+
+function renderApps() {
+    const tbody = document.getElementById('trackerBody');
+    const empty = document.getElementById('trackerEmpty');
+    if (apps.length===0) { tbody.innerHTML=''; empty.style.display='block'; }
+    else {
+        empty.style.display='none';
+        tbody.innerHTML = apps.map(a => `<tr>
+            <td><strong>${esc(a.company)}</strong>${a.job_url?` <a href="${esc(a.job_url)}" target="_blank" style="font-size:0.75rem;color:var(--primary);">&#x1f517;</a>`:''}</td>
+            <td>${esc(a.position)}</td>
+            <td><span class="badge badge-${a.status}">${a.status.charAt(0).toUpperCase()+a.status.slice(1)}</span></td>
+            <td>${a.date_applied||'—'}</td>
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.notes||'—')}</td>
+            <td><button class="btn btn-outline btn-sm" onclick='editApp(${JSON.stringify(a).replace(/'/g,"&#39;")})'>Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteApp('${a.id}')">Del</button></td>
+        </tr>`).join('');
+    }
+    document.getElementById('statTotal').textContent = apps.length;
+    document.getElementById('statApplied').textContent = apps.filter(a=>a.status==='applied').length;
+    document.getElementById('statInterview').textContent = apps.filter(a=>a.status==='interview').length;
+    document.getElementById('statOffer').textContent = apps.filter(a=>a.status==='offer').length;
+    document.getElementById('statRejected').textContent = apps.filter(a=>a.status==='rejected').length;
+}
+
+function openAppModal() {
+    document.getElementById('appModalTitle').textContent='Add Application';
+    document.getElementById('mCompany').value='';
+    document.getElementById('mPosition').value='';
+    document.getElementById('mStatus').value='applied';
+    document.getElementById('mDate').value=new Date().toISOString().slice(0,10);
+    document.getElementById('mUrl').value='';
+    document.getElementById('mNotes').value='';
+    document.getElementById('mEditId').value='';
+    document.getElementById('appModal').classList.add('show');
+}
+
+function editApp(a) {
+    document.getElementById('appModalTitle').textContent='Edit Application';
+    document.getElementById('mCompany').value=a.company||'';
+    document.getElementById('mPosition').value=a.position||'';
+    document.getElementById('mStatus').value=a.status||'applied';
+    document.getElementById('mDate').value=a.date_applied||'';
+    document.getElementById('mUrl').value=a.job_url||'';
+    document.getElementById('mNotes').value=a.notes||'';
+    document.getElementById('mEditId').value=a.id;
+    document.getElementById('appModal').classList.add('show');
+}
+
+function closeAppModal() { document.getElementById('appModal').classList.remove('show'); }
+
+async function saveApp() {
+    const company = document.getElementById('mCompany').value.trim();
+    const position = document.getElementById('mPosition').value.trim();
+    if (!company||!position) { alert('Company and Position required'); return; }
+    const body = { userId:user.id, company, position, status:document.getElementById('mStatus').value, dateApplied:document.getElementById('mDate').value, notes:document.getElementById('mNotes').value, jobUrl:document.getElementById('mUrl').value };
+    const editId = document.getElementById('mEditId').value;
+    if (editId) {
+        await fetch(API+'/api/applications/'+editId, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    } else {
+        await fetch(API+'/api/applications', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    }
+    closeAppModal();
+    await loadApps();
+    toast(editId?'Application updated':'Application added');
+}
+
+async function deleteApp(id) {
+    if (!confirm('Delete this application?')) return;
+    await fetch(API+'/api/applications/'+id, {method:'DELETE'});
+    await loadApps();
+    toast('Application deleted');
+}
+
+// ── AUTO APPLY ──
+async function generateMsg(type) {
+    const jobDesc = document.getElementById('jobDescInput').value.trim();
+    if (!jobDesc) { toast('Paste a job description first'); return; }
+    const cvId = document.getElementById('autoCvSelect').value;
+
+    const output = document.getElementById('genOutput');
+    const textArea = document.getElementById('genText');
+    output.style.display='block';
+    textArea.value='Generating...';
+
+    try {
+        const res = await fetch(API+'/api/generate', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ userId:user.id, jobDescription:jobDesc, type, cvId })
+        });
+        const data = await res.json();
+        if (!res.ok) { textArea.value='Error: '+(data.error||'Something went wrong'); return; }
+        textArea.value = data.text;
+    } catch(e) { textArea.value='Error: '+e.message; }
+}
+
+function copyGen() { navigator.clipboard.writeText(document.getElementById('genText').value); toast('Copied!'); }
+
+// ── SETTINGS ──
+async function loadApiKeyStatus() {
+    const res = await fetch(API+'/api/users/'+user.id+'/apikey');
+    const data = await res.json();
+    if (data.hasKey) {
+        document.getElementById('settApiKey').value='••••••••';
+        document.getElementById('settProvider').value=data.provider||'openai';
+        document.getElementById('settKeyStatus').innerHTML='<span style="color:var(--success)">API key is set</span>';
+    }
+}
+
+async function saveApiKey() {
+    const key = document.getElementById('settApiKey').value.trim();
+    const provider = document.getElementById('settProvider').value;
+    if (!key||key==='••••••••') return;
+    await fetch(API+'/api/users/'+user.id+'/apikey', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,provider})});
+    document.getElementById('settKeyStatus').innerHTML='<span style="color:var(--success)">Key saved!</span>';
+    document.getElementById('settApiKey').value='••••••••';
+    toast('API key saved');
+}
+
+async function loadSettings() {
+    const res = await fetch(API+'/api/settings/'+user.id);
+    const data = await res.json();
+    if (data.target_role) document.getElementById('prefRole').value=data.target_role;
+    if (data.location) document.getElementById('prefLocation').value=data.location;
+    if (data.experience_level) document.getElementById('prefLevel').value=data.experience_level;
+    if (data.industry) document.getElementById('prefIndustry').value=data.industry;
+}
+
+async function savePrefs() {
+    await fetch(API+'/api/settings/'+user.id, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        targetRole:document.getElementById('prefRole').value,
+        location:document.getElementById('prefLocation').value,
+        experienceLevel:document.getElementById('prefLevel').value,
+        industry:document.getElementById('prefIndustry').value
+    })});
+    toast('Preferences saved');
+}
+
+// ── HELPERS ──
+function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function toast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+
+document.getElementById('appModal').addEventListener('click', function(e) { if(e.target===this) closeAppModal(); });
+</script>
+</body>
+</html>

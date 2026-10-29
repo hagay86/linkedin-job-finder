@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.db
+*.sqlite
+*.pdf
+*.xlsx
+__pycache__/
+.venv/
+.~lock*
